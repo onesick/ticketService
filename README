@@ -1,0 +1,16 @@
+The ticket service will ask the user to first set up the venue size by entering row, and column.
+Once the size is entered, it displays the venue availability, with number of seats availability.
+
+ASSUMPTION: 
+The best seat is in the middle of the venue.
+people don't care if they seat together
+
+
+How to build:
+The executable is included in the repo.
+If you are a windows user, execute "ticketServiceWin"
+If you are a mac user, execute "ticketServiceMac"
+If you are a linux user, execute "ticketServiceLinux"
+
+How to execute unit testing:
+run go test, assuming you installed golang, and directories.
