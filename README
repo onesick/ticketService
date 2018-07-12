@@ -3,13 +3,22 @@ Once the size is entered, it displays the venue availability, with number of sea
 
 ASSUMPTION: 
 The best seat is in the middle of the venue.
-people don't care if they seat together
+people don't care if they seat together. They just care about the best seat.
+Held Seats need to be reserved in 10 seconds. Otherwise, it will be released, and open for hold again.
 
 
 How to build:
+for each os, at the directory of the source code terminal do the following
+linux binary:
+GOOS=linux GOARCH=386 go build -o ticketServiceLinux main.go
+windows binary:
+GOOS=windows GOARCH=386 go build -o ticketServiceWin main.go
+mac:
+go build
+
 The executable is included in the repo.
 If you are a windows user, execute "ticketServiceWin"
-If you are a mac user, execute "ticketServiceMac"
+If you are a mac user, execute "ticketService"
 If you are a linux user, execute "ticketServiceLinux"
 
 How to execute unit testing:

@@ -3,16 +3,20 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"sort"
+	"strconv"
+	"time"
 )
 
 const ROW = 10
 const COL = 10
 
 type SeatHold struct {
-	seatHoldId  int
+	seatHoldId  string
 	heldSeats   []SeatInfo
 	relatedInfo string
+	expiration  <-chan time.Time
 }
 
 type SeatInfo struct {
@@ -54,23 +58,28 @@ func (s *seatSorter) Less(i, j int) bool {
 }
 
 var (
-	venue [][]string
+	venue          [][]string
+	readyToReserve map[string]SeatHold
 )
 
 func init() {
 	venue = CreateVenue(ROW, COL)
+	readyToReserve = make(map[string]SeatHold)
 }
 
 func main() {
 	fmt.Println("Welcome to ticket service")
 	exit := 0
 	var input string
-	for exit > 1 {
+	var seatNum int
+	var email string
+	var holdID string
+	for exit < 1 {
 		// print venue
 		for i := 0; i < len(venue); i++ {
 			fmt.Println(venue[i])
 		}
-		fmt.Println("Options are: count seats available(count), hold seats(hold), reserve held seats(reserve)")
+		fmt.Println("Options are: count seats available(count), hold seats(hold), reserve held seats(reserve), exit(exit)")
 		fmt.Println("What would you like to do?:")
 		fmt.Scanln(&input)
 		switch input {
@@ -78,23 +87,42 @@ func main() {
 			fmt.Println("Number of available Seats are: ", numSeatsAvailable())
 		case "hold":
 			fmt.Println("How many seats do you need?")
-			// fmt.Scanln()
+			fmt.Scanln(&seatNum)
+			fmt.Println("What's your email?")
+			fmt.Scanln(&email)
+			s := findAndHoldSeats(seatNum, email)
+			fmt.Println("Your reservation ID is:", s.seatHoldId)
+			// run concurrently and listen for expiration tick. When the expiration hits, it releases the held seat
+			go func() {
+				for {
+					select {
+					case <-s.expiration:
+						// when it expires, it checks if it's already reserved. If it's reserved, nothing to release back
+						seat, ok := readyToReserve[s.seatHoldId]
+						if ok {
+							delete(readyToReserve, seat.seatHoldId)
+							for _, seatsOnHold := range seat.heldSeats {
+								venue[seatsOnHold.row][seatsOnHold.col] = "O"
+							}
+						}
+
+					}
+				}
+			}()
+		case "reserve":
+			//ask for reserveID and reserve
+			fmt.Println("What's the hold ID?")
+			fmt.Scanln(&holdID)
+			fmt.Println("What's your email?")
+			fmt.Scanln(&email)
+			confirmation := reserveSeats(holdID, email)
+			fmt.Println("Your reservation confirmation code is:", confirmation)
+		case "exit":
+			exit = 1
+		default:
+			fmt.Println("no correct input")
 		}
 	}
-
-	s := findAndHoldSeats(2, "sample")
-	fmt.Println(s)
-	for _, seatsOnHold := range s.heldSeats {
-		venue[seatsOnHold.row][seatsOnHold.col] = "H"
-	}
-	fmt.Println("After hold")
-	for i := 0; i < len(venue); i++ {
-		fmt.Println(venue[i])
-	}
-	fmt.Println("Available Seats are: ", numSeatsAvailable())
-
-	// fmt.Scanln(&input)
-	// fmt.Println(input)
 }
 
 // CreateVenue : creates a venue of given size
@@ -140,27 +168,50 @@ func findAndHoldSeats(numSeats int, customerEmail string) SeatHold {
 				currentSeat := SeatInfo{rowKey, colKey, distance}
 				heldSeat.heldSeats = append(heldSeat.heldSeats, currentSeat)
 			}
-			// drop numSeats-1
 			if len(heldSeat.heldSeats) > numSeats {
-				// sort the heldseats array and drop the largest distance
-				// for index, info := range heldSeat.heldSeats {
-				// 	info.distance
-				// }
 				By(distanceToBestSeat).Sort(heldSeat.heldSeats)
 				// deleting array to leave the least distance to the best seat
 				heldSeat.heldSeats = append(heldSeat.heldSeats[:numSeats])
 			}
 		}
-
 	}
+	// set the marker to show the held seats
+	for _, seatsOnHold := range heldSeat.heldSeats {
+		venue[seatsOnHold.row][seatsOnHold.col] = "H"
+	}
+	// assigning random reservation number
+	randNum := rand.Intn(99999)
+	id := PadLeft(strconv.Itoa(randNum), "0", 6)
+	heldSeat.seatHoldId = id
+	heldSeat.relatedInfo = customerEmail
+	//after 10 seconds, hold seats will be released
+	heldSeat.expiration = time.After(10000 * time.Millisecond)
+	readyToReserve[id] = heldSeat
 	return heldSeat
+}
+
+// PadLeft : is used to fill up and make sure all reserveID are specified length
+func PadLeft(str, pad string, lenght int) string {
+	for {
+		str = pad + str
+		if len(str) > lenght {
+			return str[0:lenght]
+		}
+	}
 }
 
 // reserveSeats: takes hold identifier, and customer email, and return confirmation string.
 // If reserveSeats failed, return 'RESERVATION_FAILED'
-func reserveSeats(seatHoldId int, customerEmail string) string {
-
-	// if not sucessful
-	// return "RESERATION_FAILED"
-	return ""
+func reserveSeats(seatHoldId string, customerEmail string) string {
+	seat, ok := readyToReserve[seatHoldId]
+	if ok {
+		for _, seatsOnHold := range seat.heldSeats {
+			fmt.Println(venue[seatsOnHold.row][seatsOnHold.col])
+			venue[seatsOnHold.row][seatsOnHold.col] = "R"
+			delete(readyToReserve, seatHoldId)
+		}
+		return "Random confirmation string"
+	} else {
+		return "RESERVATION_FAILED. Hold seat ID does not exist"
+	}
 }
