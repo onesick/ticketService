@@ -22,4 +22,6 @@ If you are a mac user, execute "ticketService"
 If you are a linux user, execute "ticketServiceLinux"
 
 How to execute unit testing:
-run go test, assuming you installed golang, and directories.
+run go test
+
+For simplicity of unit testing, I didn't use assertion library, but used native golang testing library.

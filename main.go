@@ -206,7 +206,6 @@ func reserveSeats(seatHoldId string, customerEmail string) string {
 	seat, ok := readyToReserve[seatHoldId]
 	if ok {
 		for _, seatsOnHold := range seat.heldSeats {
-			fmt.Println(venue[seatsOnHold.row][seatsOnHold.col])
 			venue[seatsOnHold.row][seatsOnHold.col] = "R"
 			delete(readyToReserve, seatHoldId)
 		}
